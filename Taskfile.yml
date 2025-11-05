@@ -1,0 +1,121 @@
+# https://taskfile.dev/usage/
+version: '3'
+vars:
+  PORT: 4000
+  HOST: http://127.0.0.1:4000
+  
+tasks:
+  default: mix test
+  sh: iex --erl "-kernel shell_history enabled" -S mix run --no-start
+  run: BANDER_SERVER=1 iex --erl "-kernel shell_history enabled" -S mix run # --no-halt
+  lb: 
+    desc: local livebook note with ipv6
+    env:
+      ERL_AFLAGS: "-proto_dist inet6_tcp -kernel shell_history enabled"
+    cmds:
+    - iex --name bander --cookie bander -S mix run # -e ":observer.start()"
+  ob: iex --erl "-kernel shell_history enabled" -S mix run -e ":observer.start()"
+
+  c2: curl -v --http2 http://httpbin.org/get
+
+  tsh: MIX_ENV=test iex --dbg pry --erl "-kernel shell_history enabled" -S mix
+  # iex -S mix test -b test/bandit/http1/plug_test.exs:39
+  # n(next) or c(continue)
+
+  ## Debug in iEx session
+  # Mix.ensure_application!(:wx)             # Not necessary on Erlang/OTP 27+
+  # Mix.ensure_application!(:runtime_tools)  # Not necessary on Erlang/OTP 27+
+  # Mix.ensure_application!(:observer)
+  # :observer.start()
+
+  # wireshark display filter
+  # tcp and ip.addr == 127.0.0.1 and tcp.srcport > 2000 and tcp.dstport > 2000
+  # http2
+
+  ws: |
+    curl -i \
+      -H "Connection: Upgrade" \
+      -H "Upgrade: websocket" \
+      -H "Sec-WebSocket-Key: $(openssl rand -base64 16)" \
+      -H "Sec-WebSocket-Version: 13" \
+      {{.HOST}}/websocket
+  ws2: |
+    curl -i \
+      -H "Connection: Upgrade" \
+      -H "Upgrade: websocket" \
+      -H "Sec-WebSocket-Key: $(openssl rand -base64 16)" \
+      -H "Sec-WebSocket-Version: 13" \
+      ws://127.0.0.1:4000/websocket
+      
+  # 提示：curl仅用于测试握手，​无法收发 WebSocket 数据帧。生产环境调试建议使用 wscat
+  # wscat -c ws://localhost:4000
+  # wscat -c -v ws://echo.websocket.org
+  # bun add -g wscat
+  
+  # brew install websocat
+  # websocat ws://echo.websocket.org
+
+  # http2
+  # curl -I --http2 http://127.0.0.1:4000
+
+  ## tcp client test
+  # nc localhost 1234
+  # # nc -l 1234
+  # nc -z localhost 1234-2000
+  # sudo tcpdump -i lo0 tcp and port 1234 -n -v
+  # echo "hi" | curl telnet://localhost:1234
+  tel: curl telnet://localhost:{{.PORT}}
+
+  ## curl without verify certification
+  # curl -k https://127.0.0.1:1234
+  ## ncat (from nmap) support ssl connection
+  # ncat 
+  # certificate validation is off by default. You need to use --ssl-verify if you do want to validate the certificate.
+  sc: ncat --ssl 127.0.0.1 1234
+  scv: ncat --ssl --ssl-verify 127.0.0.1 1234
+
+  ## 使用Wireshark解密跟踪tls流量
+  ## SSLKEYLOGFILE使用绝对路径！！！
+  ## curl
+  # https://everything.curl.dev/usingcurl/tls/sslkeylogfile.html#restrictions
+  # NOTE: should use homebrew curl not mac built-in curl as above note
+  # sslcurl: export SSLKEYLOGFILE=~/dev/elab/socker/tmp/tlskey.log && /opt/homebrew/opt/curl/bin/curl -k https://127.0.0.1:1234
+  bcurl: export SSLKEYLOGFILE=~/dev/elab/socker/tmp/tlskey.log && /opt/homebrew/opt/curl/bin/curl --cacert ~/dev/elab/socker/keys/test/root_ca.crt https://localhost:1234
+  # homebrew curl 不一定使用macOs的系统证书, 但mac自带的curl会 
+  curl: export SSLKEYLOGFILE=~/dev/elab/socker/tmp/tlskey.log && /usr/bin/curl https://127.0.0.1:1234
+  # 如果通过 Homebrew 安装了新版 curl，它可能默认使用自己的证书存储（而非系统证书） /opt/homebrew/etc/openssl@3/certs 
+  # brew info openssl
+  # ==> Caveats
+  #   To add additional certificates, place .pem files in
+  #     /opt/homebrew/etc/openssl@3/certs
+  #   and run
+  #     /opt/homebrew/opt/openssl@3/bin/c_rehash
+
+  ## Linux/macOS：终端执行, 再启动浏览器。 应该在iTerm2中执行而不是 task xxx???
+  # ls -d1 /Applications/Google*.app
+  sslchrome: export SSLKEYLOGFILE=~/dev/elab/socker/tmp/tlskey.log && open -a "Google Chrome"
+  # or /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome
+  # open https://127.0.0.1:1234
+  # ip.addr == 66.241.125.252 and tcp
+  # ip.src == 66.241.125.252
+  # tcp.port == 443 and (ip.src == 66.241.125.152 or ip.dst == 66.241.125.152)
+  # curl https://httpbin.org/ip
+
+  ## tcp SYNC
+  # sudo nping --tcp -p 1234 --flags SYN 127.0.0.1
+  # sudo nping --icmp -c 2  google.com
+
+  ## Setup
+  setup: |
+    mkdir -p _local
+    kland_path=thousand_island
+    if [ -d $kland_path ]; then
+      echo "# Using $kland_path"
+    else
+      echo "# Not found $kland_path, setup it first like below: "
+      echo "git clone --depth 1 git@github.com:mtrudel/thousand_island.git _local/thounsand_island"
+      exit 1
+    fi
+
+    mix deps.get
+    MIX_ENV=test mix deps.get 
