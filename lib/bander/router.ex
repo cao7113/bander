@@ -62,12 +62,11 @@ defmodule Bander.Router do
 
   get "/websocket" do
     websock = Bander.WebSock
-    websock_init_arg = []
+    websock_init_arg = [plug_pid: self()]
     websocket_opts = [timeout: 60_000]
     Logger.info("plug-connection: #{self() |> inspect} before websocket upgrade handshake!")
 
     conn
-    # |> put_resp_header("x-plug-set-header", "itsaheader")
     |> WebSockAdapter.upgrade(websock, websock_init_arg, websocket_opts)
     |> halt()
   end

@@ -35,7 +35,10 @@ defmodule Bander.WebSock do
 
   def handle_in({msg, _opts} = data, state) do
     Logger.info("==websock handle_in with data: #{data |> inspect}")
-    reply = "server reply: #{msg |> String.trim()}"
+
+    reply =
+      "server reply: #{msg |> String.trim()} web_sock pid: #{self() |> inspect} with state: #{state |> inspect}"
+
     {:push, {:text, reply}, state}
   end
 

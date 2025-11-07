@@ -23,4 +23,7 @@ case config_env() do
         # keyfile: Path.join(__DIR__, "../keys/test/dev.key"),
         send_timeout: 300_000
       ]
+
+  _ ->
+    nil
 end
