@@ -1,6 +1,10 @@
 # Bander
 
-Dig Bandit code
+Dig bandit, network socket code
+
+## Testing
+
+- `test/support/` copied from bandit source
 
 ## Links 
 
